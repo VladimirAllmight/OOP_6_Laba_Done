@@ -6,7 +6,7 @@ public class HeavyMace extends Weapon {
     private final Random random = new Random();
 
     public HeavyMace() {
-        super("Heavy Mace", 40.0, 20.0); // высокая стоимость стамины
+        super("Heavy Mace", 24.0, 40.0); // высокая стоимость стамины
     }
 
     @Override
@@ -29,7 +29,7 @@ public class HeavyMace extends Weapon {
 
     @Override
     public double getStaminaCost() {
-        return 25; // Очень затратная
+        return 40; // Очень затратная
     }
 }
 

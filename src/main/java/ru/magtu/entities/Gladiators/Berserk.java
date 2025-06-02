@@ -16,34 +16,49 @@ public class Berserk extends Gladiator {
     }
 
     @Override
-    public double attack() {
-        double requiredStamina = weapon.getStaminaCost();
-
-        // Если стамина меньше или равна 0, пропускаем ход
-        if (stamina <= 0) {
-            System.out.printf("%s слишком устал и пропускает ход, чтобы восстановиться.%n", name);
-            recoverStamina(); // Восстановление стамины после пропуска хода
-            return 0; // Никакой атаки не будет
-        }
-
-        double dmg = weapon.getDamage();
+    public double calculateBaseDamage() {
+        double baseDamage = super.calculateBaseDamage();
 
         if (enraged) {
-            dmg *= 1.5;
-            rageTurns--;
-            if (rageTurns == 0) enraged = false;
+            baseDamage *= 1.5;
         }
 
-        if (stamina < requiredStamina) {
-            stamina = 0;
-            System.out.printf("%s слишком устал и наносит слабый удар.%n", name);
-            return applyCritical(dmg * 0.5);
-        }
-
-        stamina -= requiredStamina;
-        return applyCritical(dmg);
+        return baseDamage;
     }
 
+    @Override
+    public double attack() {
+        if (isResting) {
+            System.out.printf("%s отдыхает и не атакует.%n", name);
+            return 0;
+        }
+
+        double requiredStamina = weapon.getStaminaCost();
+
+        if (stamina <= requiredStamina * 0.3 && !enraged) {
+            System.out.printf("%s слишком устал и впадает в ярость!%n", name);
+            enraged = true;
+            rageTurns = 2;
+            startResting(1);
+            return 0;
+        }
+
+        double damage = calculateBaseDamage();
+        damage = applyCritical(damage);
+
+        // Расход стамины после расчета урона
+        stamina -= requiredStamina;
+        stamina = Math.max(0, stamina);
+
+        if (enraged) {
+            rageTurns--;
+            if (rageTurns <= 0) {
+                enraged = false;
+            }
+        }
+
+        return damage;
+    }
 //    @Override
 //    public double attack() {
 //        double requiredStamina = weapon.getStaminaCost();

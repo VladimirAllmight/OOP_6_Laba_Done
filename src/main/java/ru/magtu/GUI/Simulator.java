@@ -1,5 +1,7 @@
 package ru.magtu.GUI;
 
+import ru.magtu.GUI.MusicPlayer.MusicList;
+import ru.magtu.GUI.MusicPlayer.MusicPlayer;
 import ru.magtu.entities.Gladiators.Berserk;
 import ru.magtu.entities.Gladiators.Gladiator;
 
@@ -15,6 +17,7 @@ public class Simulator extends JPanel {
     private Image backgroundImage;
     private Image gladiator1Image;
     private Image gladiator2Image;
+    MusicPlayer player = new MusicPlayer();
 
     private int gladiator1X = 50;
     private int gladiator2X = 700;
@@ -38,7 +41,7 @@ public class Simulator extends JPanel {
     private void loadImages() {
 
         try {
-            backgroundImage = new ImageIcon(getClass().getResource("/image2.png")).getImage();
+            backgroundImage = new ImageIcon(Objects.requireNonNull(getClass().getResource("/image2.png"))).getImage();
             gladiator1Image = new ImageIcon(Objects.requireNonNull(getClass()
                     .getResource(gladiator1 instanceof Berserk ? "/berserk.png" : "/standart.png"))).getImage();
 
@@ -51,6 +54,7 @@ public class Simulator extends JPanel {
     }
 
     private void startFightAnimation() {
+        player.playSound(MusicList.FIGHT_WORD);
         Timer fightTimer = new Timer();
         fightTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
@@ -66,7 +70,7 @@ public class Simulator extends JPanel {
                     repaint();
                 }
             }
-        }, 1000, 50);
+        }, 400, 30);
     }
 
     private void startGladiatorMovement() {
@@ -95,59 +99,121 @@ public class Simulator extends JPanel {
         }, 0, 30);
     }
 
+
     private void startBattle() {
         if (battleStarted) return;
         battleStarted = true;
 
+        // Случайно выбираем, кто атакует первым
+        final boolean firstAttacker = Math.random() < 0.5;
+
         Timer battleTimer = new Timer();
-        final int[] phase = {0}; // Этап поединка
+        final int[] phase = {firstAttacker ? 0 : 1}; // Начинаем с выбранного бойца
+        final boolean[] gladiator1Attacked = {false};
+        final boolean[] gladiator2Attacked = {false};
 
         battleTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
+                // Обновляем состояние отдыха и восстанавливаем выносливость
+                gladiator1.updateRest();
+                gladiator2.updateRest();
+                gladiator1.recoverStamina();
+                gladiator2.recoverStamina();
+
                 if (!gladiator1.isAlive() || !gladiator2.isAlive()) {
+                    player.playSound(MusicList.DEATH);
                     String winner = gladiator1.isAlive() ? gladiator1.getName() : gladiator2.getName();
                     battleLog = "Победитель: " + winner + "!";
                     repaint();
                     battleTimer.cancel();
+                    showWinnerOverlay(winner);
                     return;
                 }
 
                 switch (phase[0]) {
-                    case 0 -> {
-                        battleLog = gladiator1.getName() + " атакует!";
-                        repaint();
-                        animateAttack(true, () -> {}); // пустой after, просто движение
-                    }
-                    case 1 -> {
-                        double damage = gladiator1.attack();
-                        gladiator2.takeDamage(damage);
-                        battleLog = gladiator1.getName() + " наносит " + String.format("%.1f", damage) + " урона!";
-                        repaint();
-                    }
-                    case 2 -> {
-                        if (!gladiator2.isAlive()) {
-                            battleTimer.cancel();
-                            battleLog = "Победитель: " + gladiator1.getName() + "!";
-                            repaint();
-                            return;
+                    case 0 -> { // Атака первого гладиатора
+                        if (gladiator1.canAttack() && !gladiator1Attacked[0]) {
+                            battleLog = gladiator1.getName() + " атакует!";
+                            animateAttack(true, () -> {
+                                double damage = gladiator1.attack();
+                                if (damage > 0) {
+                                    gladiator2.takeDamage(damage);
+                                    battleLog = gladiator1.getName() + " наносит " + String.format("%.1f", damage) + " урона!";
+                                }
+                                gladiator1Attacked[0] = true;
+                                repaint();
+                            });
+                        } else {
+                            battleLog = gladiator1.getName() + (gladiator1.isResting ? " отдыхает." : " слишком устал.");
+                            gladiator1Attacked[0] = true;
                         }
-                        battleLog = gladiator2.getName() + " контратакует!";
-                        repaint();
-                        animateAttack(false, () -> {});
                     }
-                    case 3 -> {
-                        double damage = gladiator2.attack();
-                        gladiator1.takeDamage(damage);
-                        battleLog = gladiator2.getName() + " наносит " + String.format("%.1f", damage) + " урона!";
-                        repaint();
+                    case 1 -> { // Атака второго гладиатора
+                        if (gladiator2.canAttack() && !gladiator2Attacked[0]) {
+                            battleLog = gladiator2.getName() + " атакует!";
+                            animateAttack(false, () -> {
+                                double damage = gladiator2.attack();
+                                if (damage > 0) {
+                                    gladiator1.takeDamage(damage);
+                                    battleLog = gladiator2.getName() + " наносит " + String.format("%.1f", damage) + " урона!";
+                                }
+                                gladiator2Attacked[0] = true;
+                                repaint();
+                            });
+                        } else {
+                            battleLog = gladiator2.getName() + (gladiator2.isResting ? " отдыхает." : " слишком устал.");
+                            gladiator2Attacked[0] = true;
+                        }
+                    }
+                    case 2 -> { // Сброс флагов атаки
+                        gladiator1Attacked[0] = false;
+                        gladiator2Attacked[0] = false;
                     }
                 }
 
-                phase[0] = (phase[0] + 1) % 4;
+                phase[0] = (phase[0] + 1) % 3;
+                repaint();
             }
-        }, 0, 1200); // шаг каждые 1.2 секунды
+        }, 0, 300); // Увеличил задержку для баланса
     }
+
+    private void animateAttack(boolean isFirstAttacker, Runnable afterAnimation) {
+        Timer attackTimer = new Timer();
+        int[] step = {0};
+
+        attackTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                step[0]++;
+                if (step[0] <= 5) {
+                    // Движение вперёд
+                    if (isFirstAttacker) {
+                        gladiator1X += 4;
+                        player.playSound(MusicList.BERSERK_ATACK);
+                    } else {
+                        gladiator2X -= 4;
+                        player.playSound(MusicList.STANDART_ATACK);
+                    }
+                } else if (step[0] <= 10) {
+                    // Возврат назад
+                    if (isFirstAttacker) {
+                        gladiator1X -= 4;
+                    } else {
+                        gladiator2X += 4;
+                    }
+                } else {
+                    attackTimer.cancel();
+                    afterAnimation.run();
+                }
+                repaint();
+            }
+        }, 0, 30);
+    }
+    private void showWinnerOverlay(String winner) {
+        JOptionPane.showMessageDialog(this, "Победитель: " + winner, "Бой завершен", JOptionPane.INFORMATION_MESSAGE);
+    }
+
     @Override
     protected void paintComponent(Graphics g) {
         super.paintComponent(g);
@@ -187,37 +253,42 @@ public class Simulator extends JPanel {
         }
     }
 
-    private void animateAttack(boolean isFirstAttacker, Runnable afterAnimation) {
-        Timer attackTimer = new Timer();
-        int attackDistance = 20;
-        int[] step = {0};
-
-        attackTimer.scheduleAtFixedRate(new TimerTask() {
-            @Override
-            public void run() {
-                step[0]++;
-                if (step[0] <= 5) {
-                    // Движение вперёд
-                    if (isFirstAttacker) {
-                        gladiator1X += 4;
-                    } else {
-                        gladiator2X -= 4;
-                    }
-                } else if (step[0] <= 10) {
-                    // Возврат назад
-                    if (isFirstAttacker) {
-                        gladiator1X -= 4;
-                    } else {
-                        gladiator2X += 4;
-                    }
-                } else {
-                    attackTimer.cancel();
-                    afterAnimation.run(); // Действие после анимации
-                }
-                repaint();
-            }
-        }, 0, 30);
-    }
+//    private void animateAttack(boolean isFirstAttacker, Runnable afterAnimation) {
+//        Timer attackTimer = new Timer();
+//        int attackDistance = 20;
+//        int[] step = {0};
+//
+//        attackTimer.scheduleAtFixedRate(new TimerTask() {
+//            @Override
+//            public void run() {
+//                gladiator1.updateRest();
+//                gladiator2.updateRest();
+//
+//                gladiator1.recoverStamina();
+//                gladiator2.recoverStamina();
+//                step[0]++;
+//                if (step[0] <= 5) {
+//                    // Движение вперёд
+//                    if (isFirstAttacker) {
+//                        gladiator1X += 4;
+//                    } else {
+//                        gladiator2X -= 4;
+//                    }
+//                } else if (step[0] <= 10) {
+//                    // Возврат назад
+//                    if (isFirstAttacker) {
+//                        gladiator1X -= 4;
+//                    } else {
+//                        gladiator2X += 4;
+//                    }
+//                } else {
+//                    attackTimer.cancel();
+//                    afterAnimation.run(); // Действие после анимации
+//                }
+//                repaint();
+//            }
+//        }, 0, 30);
+//    }
 
     private void drawGladiator(Graphics g, int x, int y, Gladiator gladiator, Image image) {
         int barWidth = 100;

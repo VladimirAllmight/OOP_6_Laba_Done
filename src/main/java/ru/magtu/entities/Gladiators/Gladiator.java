@@ -17,7 +17,7 @@ public abstract class Gladiator {
     protected final double MAX_STAMINA = 100;
     protected Random rand = new Random();
 
-    protected boolean isResting = false;
+    public boolean isResting = false;
     protected int restTurns = 0;
 
 
@@ -40,8 +40,6 @@ public abstract class Gladiator {
             }
         }
     }
-
-
 
     public boolean isAlive() {
         return health > 0;
@@ -76,10 +74,18 @@ public abstract class Gladiator {
 
         if (stamina <= requiredStamina * 0.3) {
             System.out.printf("%s слишком устал и начинает отдых.%n", name);
-            startResting(2); // Отдых на 2 хода
+            startResting(2);
             return 0;
         }
-        return requiredStamina;
+
+        double damage = calculateBaseDamage();
+        damage = applyCritical(damage);
+
+        // Расход стамины после расчета урона
+        stamina -= requiredStamina;
+        stamina = Math.max(0, stamina);
+
+        return damage;
     }
 
     public abstract void takeDamage(double damage);
@@ -118,6 +124,19 @@ public abstract class Gladiator {
             recoverStamina();
             recoverStamina(); // Двойное восстановление
         }
+    }
+
+    public double calculateBaseDamage() {
+        double baseDamage = weapon.getDamage();
+
+        // Уменьшение урона при низкой стамине
+        if (stamina < weapon.getStaminaCost() * 0.5) {
+            baseDamage *= 0.7; // 30% снижение урона
+        } else if (stamina < weapon.getStaminaCost()) {
+            baseDamage *= 0.85; // 15% снижение урона
+        }
+
+        return baseDamage;
     }
 
     public void displayStatus() {

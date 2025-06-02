@@ -1,5 +1,7 @@
 package ru.magtu.GUI;
 
+import ru.magtu.GUI.MusicPlayer.MusicList;
+import ru.magtu.GUI.MusicPlayer.MusicPlayer;
 import ru.magtu.entities.Armour.*;
 import ru.magtu.entities.Gladiators.*;
 import ru.magtu.entities.Weapon.*;
@@ -32,6 +34,9 @@ public class MainWindow extends JFrame {
             }
         };
         backgroundPanel.setLayout(new BorderLayout());
+
+        MusicPlayer player = new MusicPlayer();
+        player.playSound(MusicList.MAIN_WINDOW);
 
         // Главная панель управления
         JPanel controlPanel = new JPanel(new GridLayout(1, 2, 20, 0));
@@ -110,14 +115,14 @@ public class MainWindow extends JFrame {
                 gladiator1Type.getSelectedIndex(),
                 gladiator1Weapon.getSelectedIndex(),
                 gladiator1Armor.getSelectedIndex(),
-                (String) gladiator1Type.getSelectedItem() // Используем выбранный тип как имя
+                "Боец 1"
         );
 
         Gladiator gladiator2 = createGladiator(
                 gladiator2Type.getSelectedIndex(),
                 gladiator2Weapon.getSelectedIndex(),
                 gladiator2Armor.getSelectedIndex(),
-                (String) gladiator2Type.getSelectedItem() // Используем выбранный тип как имя
+                "Боец 2"
         );
 
         SwingUtilities.invokeLater(() -> {
