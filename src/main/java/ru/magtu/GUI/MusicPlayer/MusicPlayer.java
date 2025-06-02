@@ -1,6 +1,7 @@
 package ru.magtu.GUI.MusicPlayer;
 
 import javax.sound.sampled.*;
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
@@ -11,14 +12,15 @@ public class MusicPlayer {
         stop();
 
         try {
-            // Получаем поток из ресурсов
-            InputStream audioStream = getClass().getResourceAsStream(sound.getFilePath());
+            InputStream rawStream = getClass().getResourceAsStream(sound.getFilePath());
 
-            if (audioStream == null) {
+            if (rawStream == null) {
                 throw new IOException("Файл не найден: " + sound.getFilePath());
             }
 
-            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(audioStream);
+            BufferedInputStream bufferedIn = new BufferedInputStream(rawStream);
+            AudioInputStream audioInputStream = AudioSystem.getAudioInputStream(bufferedIn);
+
             currentClip = AudioSystem.getClip();
             currentClip.open(audioInputStream);
             currentClip.start();
@@ -26,7 +28,6 @@ public class MusicPlayer {
             System.err.println("Ошибка при воспроизведении звука: " + e.getMessage());
         }
     }
-
     public void stop() {
         if (currentClip != null && currentClip.isRunning()) {
             currentClip.stop();
