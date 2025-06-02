@@ -110,6 +110,7 @@ public abstract class Gladiator {
         // Гладиатор может атаковать, если не отдыхает и у него есть стамина
         return !isResting && stamina > weapon.getStaminaCost() * 0.3;
     }
+
     public void startResting(int turns) {
         this.isResting = true;
         this.restTurns = turns;
