@@ -104,80 +104,73 @@ public class Simulator extends JPanel {
         if (battleStarted) return;
         battleStarted = true;
 
-        // Случайно выбираем, кто атакует первым
-        final boolean firstAttacker = Math.random() < 0.5;
+        final boolean[] isGladiator1Turn = {Math.random() < 0.5}; // Кто начинает первым
 
         Timer battleTimer = new Timer();
-        final int[] phase = {firstAttacker ? 0 : 1}; // Начинаем с выбранного бойца
-        final boolean[] gladiator1Attacked = {false};
-        final boolean[] gladiator2Attacked = {false};
 
         battleTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
-                // Обновляем состояние отдыха и восстанавливаем выносливость
+                // Оба восстанавливают выносливость и обновляют отдых
                 gladiator1.updateRest();
                 gladiator2.updateRest();
                 gladiator1.recoverStamina();
                 gladiator2.recoverStamina();
 
+                // Проверка на завершение боя
                 if (!gladiator1.isAlive() || !gladiator2.isAlive()) {
                     player.playSound(MusicList.DEATH);
                     String winner = gladiator1.isAlive() ? gladiator1.getName() : gladiator2.getName();
-                    battleLog = "Победитель: " + winner + "!";
+                    battleLog = "🏆 Победитель: " + winner + "!";
                     repaint();
                     battleTimer.cancel();
                     showWinnerOverlay(winner);
                     return;
                 }
 
-                switch (phase[0]) {
-                    case 0 -> { // Атака первого гладиатора
-                        if (gladiator1.canAttack() && !gladiator1Attacked[0]) {
-                            battleLog = gladiator1.getName() + " атакует!";
-                            animateAttack(true, () -> {
-                                double damage = gladiator1.attack();
-                                if (damage > 0) {
-                                    gladiator2.takeDamage(damage);
-                                    battleLog = gladiator1.getName() + " наносит " + String.format("%.1f", damage) + " урона!";
-                                }
-                                gladiator1Attacked[0] = true;
-                                repaint();
-                            });
-                        } else {
-                            battleLog = gladiator1.getName() + (gladiator1.isResting ? " отдыхает." : " слишком устал.");
-                            gladiator1Attacked[0] = true;
-                        }
+                // Ход бойца
+                if (isGladiator1Turn[0]) {
+                    if (gladiator1.canAttack()) {
+                        battleLog = gladiator1.getName() + " атакует!";
+                        animateAttack(true, () -> {
+                            double damage = gladiator1.attack();
+                            if (damage > 0) {
+                                gladiator2.takeDamage(damage);
+                                battleLog = gladiator1.getName() + " наносит " + String.format("%.1f", damage) + " урона!";
+                            } else {
+                                battleLog = gladiator1.getName() + " промахивается!";
+                            }
+                            isGladiator1Turn[0] = false; // Передаём ход второму
+                            repaint();
+                        });
+                    } else {
+                        battleLog = gladiator1.getName() + (gladiator1.isResting ? " отдыхает." : " слишком устал.");
+                        isGladiator1Turn[0] = false;
                     }
-                    case 1 -> { // Атака второго гладиатора
-                        if (gladiator2.canAttack() && !gladiator2Attacked[0]) {
-                            battleLog = gladiator2.getName() + " атакует!";
-                            animateAttack(false, () -> {
-                                double damage = gladiator2.attack();
-                                if (damage > 0) {
-                                    gladiator1.takeDamage(damage);
-                                    battleLog = gladiator2.getName() + " наносит " + String.format("%.1f", damage) + " урона!";
-                                }
-                                gladiator2Attacked[0] = true;
-                                repaint();
-                            });
-                        } else {
-                            battleLog = gladiator2.getName() + (gladiator2.isResting ? " отдыхает." : " слишком устал.");
-                            gladiator2Attacked[0] = true;
-                        }
-                    }
-                    case 2 -> { // Сброс флагов атаки
-                        gladiator1Attacked[0] = false;
-                        gladiator2Attacked[0] = false;
+                } else {
+                    if (gladiator2.canAttack()) {
+                        battleLog = gladiator2.getName() + " атакует!";
+                        animateAttack(false, () -> {
+                            double damage = gladiator2.attack();
+                            if (damage > 0) {
+                                gladiator1.takeDamage(damage);
+                                battleLog = gladiator2.getName() + " наносит " + String.format("%.1f", damage) + " урона!";
+                            } else {
+                                battleLog = gladiator2.getName() + " промахивается!";
+                            }
+                            isGladiator1Turn[0] = true; // Передаём ход первому
+                            repaint();
+                        });
+                    } else {
+                        battleLog = gladiator2.getName() + (gladiator2.isResting ? " отдыхает." : " слишком устал.");
+                        isGladiator1Turn[0] = true;
                     }
                 }
 
-                phase[0] = (phase[0] + 1) % 3;
                 repaint();
             }
-        }, 0, 300); // Увеличил задержку для баланса
+        }, 0, 300);
     }
-
     private void animateAttack(boolean isFirstAttacker, Runnable afterAnimation) {
         Timer attackTimer = new Timer();
         int[] step = {0};

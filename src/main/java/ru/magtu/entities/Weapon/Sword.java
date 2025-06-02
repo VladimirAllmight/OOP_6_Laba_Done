@@ -4,7 +4,7 @@ import java.util.Random;
 
 public class Sword extends Weapon {
     public Sword() {
-        super("Sword", 24);
+        super("Sword", 11);
     }
 
     @Override

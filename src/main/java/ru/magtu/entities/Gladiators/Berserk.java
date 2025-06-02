@@ -59,34 +59,6 @@ public class Berserk extends Gladiator {
 
         return damage;
     }
-//    @Override
-//    public double attack() {
-//        double requiredStamina = weapon.getStaminaCost();
-//
-//        if (stamina <= 0) {
-//            System.out.printf("%s слишком устал и пропускает ход, чтобы восстановиться.%n", name);
-//            recoverStamina();
-//            return 0;
-//        }
-//
-//        double dmg = weapon.getDamage();
-//
-//        if (enraged) {
-//            dmg *= 1.5;
-//            rageTurns--;
-//            if (rageTurns == 0) enraged = false;
-//        }
-//
-//        if (stamina < requiredStamina) {
-//            stamina = 0;
-//            System.out.printf("%s слишком устал и наносит слабый удар.%n", name);
-//            return applyCritical(dmg * 0.5);
-//        }
-//
-//        stamina -= requiredStamina;
-//        return applyCritical(dmg);
-//    }
-
 
     @Override
     public void takeDamage(double damage) {
